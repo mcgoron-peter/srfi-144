@@ -1006,6 +1006,13 @@
      (test (flquotient  (flonum -9.75) (flonum -0.5))   (flonum 19))
      (test (flremainder (flonum -9.75) (flonum -0.5))   (flonum -0.25))
 
+     ;;; FIXME: Should check that the sign of the quotient is correct
+     ;;; when the quotient's low bits are zero.
+     ;;;
+     ;;; FIXME: Some of these seem incorrect: at the very least they
+     ;;; contradict the remquo of glibc.
+     ;;;
+     ;;; FIXME: Modulo does funny things to negative numbers.
      (let ((f (lambda (x y)
                 (call-with-values
                  (lambda () (flremquo x y))
@@ -1084,6 +1091,18 @@
        (test (f (flonum 19.750) (flonum 0.5))
              (list (flonum -0.250) 0))
 
+       (test (f (flonum 1e300) (flonum 1e-300))
+             (list (flonum 4.891554850853602e-301)
+                   2))
+       (test (f (flonum 1e300) (flonum -1e-300))
+             (list (flonum 4.891554850853602e-301)
+                   6))
+       (test (f (flonum -1e300) (flonum -1e-300))
+             (list (flonum -4.891554850853602e-301)
+                   2))
+       (test (f (flonum -1e300) (flonum 1e-300))
+             (list (flonum -4.891554850853602e-301)
+                   6))
        )
 
      ;; Special functions
