@@ -1009,9 +1009,6 @@
      ;;; FIXME: Should check that the sign of the quotient is correct
      ;;; when the quotient's low bits are zero.
      ;;;
-     ;;; FIXME: Some of these seem incorrect: at the very least they
-     ;;; contradict the remquo of glibc.
-     ;;;
      ;;; FIXME: Modulo does funny things to negative numbers.
      (let ((f (lambda (x y)
                 (call-with-values
