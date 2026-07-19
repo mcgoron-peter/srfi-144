@@ -685,6 +685,10 @@
 ;; 2. When the numerator becomes larger in absolute value than the
 ;; denominator, then we need to shift that number, multiplied by
 ;; the appropriate power of 2, to the quotient.
+;;
+;; NOTE: Instead of fixup-remquo and return at the end, the loop
+;; could keep the correct rounding at each step. This would make
+;; things a little simpler.
            (loop
             (lambda (q r i)
               (if (>= i (- ex ey))
@@ -717,7 +721,7 @@
           (values (flcopysign 0.0 y) q)
           (loop q r 0)))))
 
-#;(define (fltruncate-remainder x y)
+(define (fltruncate-remainder x y)
   (let ((ax (flabs x))
         (ay (flabs y)))
     (cond
@@ -725,11 +729,13 @@
        (fl/ (fl* x y) (fl* x y)))
       ((fl=? ax ay) (flcopysign 0.0 ax))
       ((fl<? ax ay)
-       (fl- x (fl* (fltruncate (fl/ x y)) y)))
+       ;; truncate(|x/y|) = 0, so r = x.
+       ax)
       (else (fltruncate-remainder* x y)))))
 
-#;(define (fltruncate-remainder* x y)
-  ;; See flremquo.
+(define (fltruncate-remainder* x y)
+  ;; See flremquo. This code is much simpler as the rounding rule is
+  ;; simpler.
   (let*-values (((fx ex) (flnormalized-fraction-exponent x))
                 ((fy ey) (flnormalized-fraction-exponent y))
                 ((ix) (exact (make-flonum fx precision-bits)))
@@ -749,14 +755,12 @@
         (do ((n 0 (+ n 1))
              (r r (let ((r (* r 2)))
                     (if (>= (abs r) (abs iy))
-                        (- r (* adjusment-sign iy))
+                        (- r (* adjustment-sign iy))
                         r))))
             ((= n (- ex ey))
              (make-flonum (flonum r) (- ey 53)))))))
 
-(define flremainder 'TODO)
-
-#;(define flremainder
+(define flremainder
   (flop2 'flremainder fltruncate-remainder))
 
 ;; Special functions are defined in 144.special.scm
