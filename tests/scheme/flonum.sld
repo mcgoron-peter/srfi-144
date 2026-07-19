@@ -1016,6 +1016,14 @@
                  (lambda (r q)
                    (list r (modulo q 8)))))))
 
+       ;; 2.0/4.0 = 0.5, rounded to even, is zero.
+       (test (f (flonum 2.0) (flonum 4.0))
+             (list (flonum 2.0) 0))
+
+       ;; 3.0/4.0 = 0.75, rounded, is 1. The remainder is -1.
+       (test (f (flonum 3.0) (flonum 4.0))
+             (list (flonum -1.0) 1))
+
        (test (f (flonum 15.875) (flonum 0.5))
              (list (flonum -0.125) 0))
        (test (f (flonum 16.000) (flonum 0.5))

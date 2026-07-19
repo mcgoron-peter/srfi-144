@@ -592,7 +592,7 @@
        ;; If ax/ay is less than 0.5, then return x as the remainder, and
        ;; 0 as the quotient. Otherwise, round up.
        (let ((div (fl/ ax ay)))
-         (if (fl<? div 0.5)
+         (if (fl<=? div 0.5)
              (values x 0)
              (let ((q (flround div)))
                ;; These operations are exact, as `div` here can only
