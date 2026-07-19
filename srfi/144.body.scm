@@ -589,7 +589,15 @@
                (exact (fl* (flsgn ax) (flsgn ay)))))
       ((fl<? ax ay)
        ;; Simple case 2.
-       (values x 0))
+       ;; If ax/ay is less than 0.5, then return x as the remainder, and
+       ;; 0 as the quotient. Otherwise, round up.
+       (let ((div (fl/ ax ay)))
+         (if (fl>? (fl- ay ax) 0.5)
+             (values x 0)
+             (let ((q (flround div)))
+               ;; These operations are exact, as `div` here can only
+               ;; become 1.0 or -1.0, whose value is calculated exactly.
+               (values (fl- x (fl* q y)) (exact q))))))
       (else (complicated-remquo x y)))))
 
 (define (complicated-remquo x y)
@@ -619,8 +627,12 @@
   ;; x/y = (ix/iy)*2^{e_x - e_y}
   ;; The mantissa exponent is cancelled out (we will need to add it to
   ;; the remainder later). Now we will do the actual integer division.
-  ;; Rounding by C99 is ties-to-even.
-  (define-values (q r) (round/ ix iy))
+  ;; We can't do round/ here, because the rounding of the division here
+  ;; might not reflect the final rounding. (Example: 5.75/2.0. You can
+  ;; work it out on a piece of paper in a base-10 floating-point system.)
+  ;; Hence we just use *an* integer division operator here, and truncate
+  ;; is symmetric around the origin (like round is).
+  (define-values (q r) (truncate/ ix iy))
   ;; x/y = (q + r/iy)*2^{e_x - e_y}
   ;;     = q*2^{e_x - e_y} + (r/iy)*2^{e_x - e_y}
   ;;
@@ -664,30 +676,88 @@
   ;; (aka ldexp).
   (define q-sign (if (negative? q) -1 1))
   ;; First calculate the new quotient, only keeping 7 bits.
-  (let ((q (int-ldexp (abs q) (- ex ey))))
-    ;; Now calculate the remainder by incrementally multiplying it by
-    ;; 2. When the numerator becomes larger in absolute value than the
-    ;; denominator, then we need to shift that number, multiplied by
-    ;; the appropriate power of 2, to the quotient.
-    (if (zero? r)
-        (values (flcopysign 0.0 y) q)
-        (let loop ((q q) (r r) (i 0))
-          (if (>= i (- ex ey))
-              (values (make-flonum (flonum r) (- ey 53))
-                      (convert-sign q q-sign))
-              (let ((r (* r 2)))
-                (if (>= (abs r) (abs iy))
-                    (loop (wrap (+ q (* divsign (int-ldexp 1 (- ex ey i 1)))))
-                          (- r (* divsign iy))
-                          (+ i 1))
-                    (loop q r (+ i 1)))
-                ))))))
+  (letrec ((add-power-of-two
+            (lambda (q i)
+              (wrap (+ q (* divsign (int-ldexp
+                                     1
+                                     (- ex ey i 1)))))))
+;; Now calculate the remainder by incrementally multiplying it by
+;; 2. When the numerator becomes larger in absolute value than the
+;; denominator, then we need to shift that number, multiplied by
+;; the appropriate power of 2, to the quotient.
+           (loop
+            (lambda (q r i)
+              (if (>= i (- ex ey))
+                (fixup-remquo q q-sign r ey)
+                (let ((r (* r 2)))
+                  (if (>= (abs r) (abs iy))
+                      (loop (add-power-of-two q i)
+                            (- r (* divsign iy))
+                            (+ i 1))
+                      (loop q r (+ i 1)))))))
+           (fixup-remquo
+            (lambda (q q-sign r ey)
+              (let ((r*2 (* r 2)))
+                (cond
+                  ((or (> (abs r*2) (abs iy))
+                       (and (= (abs r*2) (abs iy)) (odd? q)))
+                   ;; Round up when remainder is above the halfway point,
+                   ;; or at the halfway point and rounding up would make
+                   ;; the quotient even.
+                   (return (wrap (+ q (* divsign 1)))
+                           q-sign
+                           (- r (* divsign iy))
+                           ey))
+                  (else (return q q-sign r ey))))))
+           (return (lambda (q q-sign r ey)
+                     (values (make-flonum (flonum r) (- ey 53))
+                             (convert-sign q q-sign)))))
+    (let ((q (int-ldexp (abs q) (- ex ey))))
+      (if (zero? r)
+          (values (flcopysign 0.0 y) q)
+          (loop q r 0)))))
 
-(define flremainder
-  (flop2 'flremainder
-         (lambda (x y)
-           (let-values (((r q) (flremquo x y)))
-             r))))
+#;(define (fltruncate-remainder x y)
+  (let ((ax (flabs x))
+        (ay (flabs y)))
+    (cond
+      ((or (flzero? y) (not (flfinite? x)) (flnan? y))
+       (fl/ (fl* x y) (fl* x y)))
+      ((fl=? ax ay) (flcopysign 0.0 ax))
+      ((fl<? ax ay)
+       (fl- x (fl* (fltruncate (fl/ x y)) y)))
+      (else (fltruncate-remainder* x y)))))
+
+#;(define (fltruncate-remainder* x y)
+  ;; See flremquo.
+  (let*-values (((fx ex) (flnormalized-fraction-exponent x))
+                ((fy ey) (flnormalized-fraction-exponent y))
+                ((ix) (exact (make-flonum fx precision-bits)))
+                ((iy) (exact (make-flonum fy precision-bits)))
+                ((r) (truncate-remainder ix iy))
+                ((adjustment-sign) (cond
+                                     ((and (negative? r) (positive? iy))
+                                      (flonum -1.0))
+                                     ((and (positive? r) (negative? iy))
+                                      (flonum -1.0))
+                                     ((and (positive? r) (positive? iy))
+                                      (flonum 1.0))
+                                     ((and (negative? r) (negative? iy))
+                                      (flonum 1.0)))))
+    (if (zero? r)
+        (flonum r)
+        (do ((n 0 (+ n 1))
+             (r r (let ((r (* r 2)))
+                    (if (>= (abs r) (abs iy))
+                        (- r (* adjusment-sign iy))
+                        r))))
+            ((= n (- ex ey))
+             (make-flonum (flonum r) (- ey 53)))))))
+
+(define flremainder 'TODO)
+
+#;(define flremainder
+  (flop2 'flremainder fltruncate-remainder))
 
 ;; Special functions are defined in 144.special.scm
 

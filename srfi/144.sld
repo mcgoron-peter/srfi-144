@@ -210,11 +210,6 @@
             (primitives foreign-procedure)))
    (else))
 
-  (cond-expand
-    ((not (library (srfi 144))
-     (include "141-shim.scm")))
-    (else (import (only (srfi 141) round/))))
-
   (include "144.constants.scm")
   (include "144.body0.scm")
 
