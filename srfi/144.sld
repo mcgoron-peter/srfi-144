@@ -186,6 +186,7 @@
    )
 
   (import (scheme base)
+          (scheme write)
           (scheme inexact))
 
   ;; Use (rnrs arithmetic flonums) if that library is available.

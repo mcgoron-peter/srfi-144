@@ -1006,11 +1006,23 @@
      (test (flquotient  (flonum -9.75) (flonum -0.5))   (flonum 19))
      (test (flremainder (flonum -9.75) (flonum -0.5))   (flonum -0.25))
 
+     ;;; FIXME: Should check that the sign of the quotient is correct
+     ;;; when the quotient's low bits are zero.
+     ;;;
+     ;;; FIXME: Modulo does funny things to negative numbers.
      (let ((f (lambda (x y)
                 (call-with-values
                  (lambda () (flremquo x y))
                  (lambda (r q)
                    (list r (modulo q 8)))))))
+
+       ;; 2.0/4.0 = 0.5, rounded to even, is zero.
+       (test (f (flonum 2.0) (flonum 4.0))
+             (list (flonum 2.0) 0))
+
+       ;; 3.0/4.0 = 0.75, rounded, is 1. The remainder is -1.
+       (test (f (flonum 3.0) (flonum 4.0))
+             (list (flonum -1.0) 1))
 
        (test (f (flonum 15.875) (flonum 0.5))
              (list (flonum -0.125) 0))
@@ -1084,6 +1096,18 @@
        (test (f (flonum 19.750) (flonum 0.5))
              (list (flonum -0.250) 0))
 
+       (test (f (flonum 1e300) (flonum 1e-300))
+             (list (flonum 4.891554850853602e-301)
+                   2))
+       (test (f (flonum 1e300) (flonum -1e-300))
+             (list (flonum 4.891554850853602e-301)
+                   6))
+       (test (f (flonum -1e300) (flonum -1e-300))
+             (list (flonum -4.891554850853602e-301)
+                   2))
+       (test (f (flonum -1e300) (flonum 1e-300))
+             (list (flonum -4.891554850853602e-301)
+                   6))
        )
 
      ;; Special functions
