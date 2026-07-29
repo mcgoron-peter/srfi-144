@@ -1,37 +1,64 @@
 (define-library (srfi 144)
-  (import (scheme base)
+  (import (scheme base) (scheme case-lambda)
           (only (mit legacy runtime)
                 flo:rounding-mode flo:set-rounding-mode!
-                flo:flonum flo:flonum?
-                flo:adjacent flo:ldexp
-                flo:safe= flo:safe<
-                flo:safe<= flo:safe> flo:safe>=
-                flo:unordered? flo:zero? flo:positive? flo:negative?
-                flo:normal? flo:subnormal?
-                flo:finite? flo:infinite?
-                flo:nan?
+                (rename flo:largest-positive-normal fl-greatest)
+                (rename flo:smallest-positive-subnormal fl-least)
+                (rename flo:error-bound fl-epsilon)
+                (rename flo:flonum flonum)
+                (rename flo:nextafter fladjacent)
+                (rename flo:ldexp make-flonum)
+                (rename flo:copysign flcopysign)
+                (rename flo:flonum? flonum?)
+                (rename flo:unordered? flunordered?)
+                (rename flo:zero? flzero?)
+                (rename flo:positive? flpositive?)
+                (rename flo:negative? flnegative?)
+                flo:= flo:< flo:<= flo:> flo:>=
+                (rename flo:finite? flfinite?)
+                (rename flo:infinite? flinfinite?)
+                (rename flo:nan? flnan?)
+                (rename flo:normal? flnormalized?)
+                (rename flo:subnormal? fldenormalized?)
                 flo:fast-fma?
                 flo:+ flo:- flo:* flo:/ flo:+*
-                flo:abs flo:copysign
-                flo:floor flo:ceiling flo:round flo:truncate
-                flo:exp flo:exp2 flo:expm1
-                flo:log flo:logp1
-                flo:log2 flo:log10
-                flo:sin flo:cos flo:tan
-                flo:asin flo:acos flo:atan flo:atan2
-                flo:sinh flo:cosh flo:tanh
-                flo:asinh flo:acosh flo:atanh
-                flo:sqrt flo:cbrt
-                flo:hypot
-                flo:largest-positive-normal
-                flo:smallest-positive-subnormal
+                (rename flo:+* fl+*)
+                (rename flo:abs flabs)
+                (rename flo:floor flfloor)
+                (rename flo:ceiling flceiling)
+                (rename flo:round flround)
+                (rename flo:truncate fltruncate)
+                (rename flo:exp flexp)
+                (rename flo:exp2 flexp2)
+                (rename flo:expm1 flexp-1)
+                (rename flo:sqrt flsqrt)
+                (rename flo:cbrt flcbrt)
+                (rename flo:hypot flhypot)
+                (rename flo:expt flexpt)
+                (rename flo:log fllog)
+                (rename flo:logp1 fllog+1)
+                (rename flo:log2 fllog2)
+                (rename flo:log10 fllog10)
+                (rename flo:sin flsin)
+                (rename flo:cos flcos)
+                (rename flo:tan fltan)
+                (rename flo:asin flasin)
+                (rename flo:acos flacos)
+                (rename flo:sinh flsinh)
+                (rename flo:cosh flcosh)
+                (rename flo:tanh fltanh)
+                (rename flo:asinh flasinh)
+                (rename flo:acosh flacosh)
+                (rename flo:atanh flatanh)
+                (rename flo:gamma flgamma)
+                (rename flo:jn flfirst-bessel)
+                (rename flo:yn flfirst-bessel)
+                (rename flo:erf flerf)
+                (rename flo:erfc flerfc)
                 flo:error-bound
                 flo:logb flo:sign-negative?
                 flo:max flo:min))
-  (export 
-          (rename flo:largest-positive-normal flgreatest)
-          (rename flo:smallest-positive-subnormal flleast)
-          (rename flo:error-bound flepsilon)
+  (export fl-greatest fl-least fl-epsilon
           fl-fast-fl+*
           fl-integer-exponent-zero
           fl-integer-exponent-nan)
@@ -42,11 +69,16 @@
     (define fl-integer-exponent-nan
       fl-integer-exponent-zero))
 
-  (export
-          (rename flo:flonum flonum)
-          (rename flo:nextafter fladjacent)
-          (rename flo:ldexp make-flonum)
-          (rename flo:copysign flcopysign))
+  (export fl-e fl-1/e fl-e-2 fl-e-pi/4 fl-log2-e fl-log10-e fl-log-2
+          fl-1/log-2 fl-log-3 fl-log-pi fl-log-10 fl-1/log-10 fl-pi
+          fl-1/pi fl-2pi fl-pi/2 fl-2/pi fl-pi/4 fl-2/sqrt-pi fl-sqrt-pi
+          fl-pi-squared fl-degree fl-gamma-1/2 fl-gamma-1/3 fl-gamma-2/3
+          fl-sqrt-2 fl-sqrt-3 fl-sqrt-5 fl-sqrt-10 fl-cbrt-2 fl-cbrt-3
+          fl-4thrt-2 fl-1/sqrt-2 fl-phi fl-log-phi fl-1/log-phi fl-euler
+          fl-e-euler fl-sin-1 fl-cos-1)
+  (include "../../srfi/144.constants.scm")
+
+  (export flonum fladjacent make-flonum flcopysign)
 
   (export flinteger-fraction
           flexponent
@@ -105,20 +137,16 @@
           1
           0)))
 
-  (export
-        (rename flo:flonum? flonum?)
-        fl=? fl<? fl>? fl<=? fl>=?
-        (rename flo:unordered? flunordered?)
-        flinteger?
-        (rename flo:zero? flzero?)
-        (rename flo:positive? flpositive?)
-        (rename flo:negative? flnegative?)
-        flodd? fleven?
-        (rename flo:finite? flfinite?)
-        (rename flo:infinite? flinfinite?)
-        (rename flo:nan? flnan?)
-        (rename flo:normal? flnormalized?)
-        (rename flo:subnormal? fldenormalized?))
+  (export flonum? flunordered?
+          fl=? fl<? fl>? fl<=? fl>=?
+          flinteger?
+          flodd? fleven?
+          flzero? flpositive? flnegative?
+          flfinite?
+          flinfinite?
+          flnan?
+          flnormalized?
+          fldenormalized?)
 
   (begin
     (define-syntax define-nary-predicate
@@ -147,19 +175,10 @@
       (not (fleven? x))))
 
   (export flmax flmin
-          fl+ fl*
-          (rename flo:+* fl+*)
-          fl- fl/ 
-          (rename flo:abs flabs)
-          flabsdiff
-          flposdiff
-          flsgn
-          flnumerator
-          fldenominator
-        (rename flo:floor flfloor)
-        (rename flo:ceiling flceiling)
-        (rename flo:round flround)
-        (rename flo:truncate fltruncate))
+          fl+ fl* fl+* fl- fl/ flabs
+          flabsdiff flposdiff flsgn
+          flnumerator fldenominator
+          flfloor flceiling flround fltruncate)
 
   (begin
     (define-syntax define-nary-prop
@@ -246,20 +265,8 @@
         d))
   )
 
-  (export
-        (rename flo:exp flexp)
-        (rename flo:exp2 flexp2)
-        (rename flo:expm1 flexp-1)
-        flsquare
-        (rename flo:sqrt flsqrt)
-        (rename flo:cbrt flcbrt)
-        (rename flo:hypot flhypot)
-        (rename flo:expt flexpt)
-        (rename flo:log fllog)
-        (rename flo:logp1 fllog+1)
-        (rename flo:log2 fllog2)
-        (rename flo:log10 fllog10)
-        make-fllog-base)
+  (export flexp flexp2 flexp-1 flsquare flsqrt flcbrt flhypot flexpt
+          fllog fllog+1 fllog2 fllog10 make-fllog-base)
 
   (begin
     (define (flsquare x)
@@ -271,19 +278,9 @@
             (flo:/ (flo:log y) (flo:log x)))))
   )
 
-  (export
-        (rename flo:sin flsin)
-        (rename flo:cos flcos)
-        (rename flo:tan fltan)
-        (rename flo:asin flasin)
-        (rename flo:acos flacos)
-        flatan
-        (rename flo:sinh flsinh)
-        (rename flo:cosh flcosh)
-        (rename flo:tanh fltanh)
-        (rename flo:asinh flasinh)
-        (rename flo:acosh flacosh)
-        (rename flo:atanh flatanh))
+  (export flo:sin flo:cos flo:tan flo:asin flo:acos flatan flo:sinh
+          flo:cosh flo:tanh flo:asinh flo:acosh flo:atanh)
+
   (begin
     (define flatan
       (case-lambda
@@ -316,15 +313,20 @@
       ;; instructions. So a smarter implementation can just emit that
       ;; instruction, without having to touch fenv.h.
       ;;
-      ;; If you don't have the ability to change the rounding mode, then
-      ;; this can also be calculated in a similar way to flremquo
-      ;; and flremainder. However, it is more complicated. One should
-      ;; benchmark to see if this or the manual version is slower.
-      (let ((current-rounding-mode (flo:rounding-mode)))
-        (flo:set-rounding-mode! 'toward-zero)
-        (let ((value (flo:truncate (flo:/ x y))))
-          (flo:set-rounding-mode! current-rounding-mode)
-          value))))
+      ;; Round-towards-zero mode will not return zeroes if the exact
+      ;; result is finite, and because of that we have to compute the
+      ;; rounded quotient to see if it is infinite. The quantum at
+      ;; the largest exponent is so large that if it rounds up to infinity
+      ;; then the exact integer part is certainly greater than the
+      ;; representable quotients.
+      (let ((correct-rounding (flo:/ x y)))
+        (if (flo:infinite? correct-rounding)
+            correct-rounding
+            (let ((current-rounding-mode (flo:rounding-mode)))
+              (flo:set-rounding-mode! 'toward-zero)
+              (let ((value (flo:truncate (flo:/ x y))))
+                (flo:set-rounding-mode! current-rounding-mode)
+                value))))))
   (begin
     (define (check-flonum! who x)
       (unless (flo:flonum? x)
@@ -338,14 +340,9 @@
         (proc x y))))
   (include "../../srfi/144.remquo.scm")
 
-  (export (rename flo:gamma flgamma)
-          flloggamma
-          (rename flo:jn flfirst-bessel)
-          (rename flo:yn flfirst-bessel)
-          (rename flo:erf flerf)
-          (rename flo:erfc flerfc))
+  (export flgamma flloggamma flfirst-bessel flfirst-bessel flerf
+          flerfc)
   (begin
     (define (flloggamma x)
       (let-values (((m s) (flloggamma x)))
         (values m (flo:flonum s))))))
-
