@@ -623,7 +623,7 @@ double truncating_quotient(double x, double y)
 	 * overflow if the result is greater in magnitude than
 	 * b^{emax}×(b-½b^{1-p}). For binary64, this is 2^1023×(2 - b^-53).
 	 * Note that the largest representable binary64 number is
-	 * 2^1023×(2 - b^52). Hence if a division overflows in RN, it's
+	 * 2^1023×(2 - b^-52). Hence if a division overflows in RN, it's
 	 * exact truncated quotient would be multiple integers above the
 	 * largest representable floating point number, so it should be
 	 * infinity.
