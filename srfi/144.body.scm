@@ -567,6 +567,41 @@
 
 ;;; Integer division
 
+#|
+FIXME: This procedure does not necessarily return the correctly rounded
+quotient. Consider x = 13510798882111490.0, y = 3.0 .
+
+(exact (flquotient 13510798882111490.0 3.0)) => 4503599627370497
+(truncate (13510798882111490/3)) => 4503599627370496
+
+The proper way to implement this procedure is to do a truncating division
+followed by truncation to integer. Without the ability to change the
+rounding mode, the best thing to do is to implement this as a primitive.
+
+On modern architectures, one can embed the rounding in the instruction.
+For example, fdiv.d.rtz will divide its arguments using round-to-zero
+(aka truncating).
+
+The next best thing is to implement it in C, or some other low-level
+language with access to the floating-point environment:
+
+#include <math.h>
+#include <fenv.h>
+double truncating_quotient(double x, double y)
+{
+	int rounding_mode = fegetround();
+	double result;
+
+	fesetround(FE_TOWARDZERO);
+	result = x/y;
+	fesetround(rounding_mode);
+	return trunc(result);
+}
+
+It is technically possible to implement this in terms of the procedures
+here: but it is basically doing what all hardware past 1985 already does
+for you.
+|#
 (define flquotient
   (flop2 'flquotient
          (lambda (x y)
