@@ -579,8 +579,20 @@ followed by truncation to integer. Without the ability to change the
 rounding mode, the best thing to do is to implement this as a primitive.
 
 On modern architectures, one can embed the rounding in the instruction.
-For example, fdiv.d.rtz will divide its arguments using round-to-zero
-(aka truncating).
+For example, in pseudo-RISC-V:
+
+	; f0 = x
+	; f1 = y
+	; f2 = empty (destination register)
+	; r1 = empty (integer register)
+
+	fdiv.d f0, f1, f2, rne ; round-to-nearest division
+	fclass.d f2, r1
+	andi r1, 0b10000001    ; check for positive or negative infinity
+	beq r1, r0, .return    ; r0 in RISC-V always has zero bits
+	fdiv.d f0, f1, f2, rtz ; round-towards-zero division
+	.return:
+	ret f2
 
 The next best thing is to implement it in C, or some other low-level
 language with access to the floating-point environment:
