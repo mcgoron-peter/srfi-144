@@ -590,22 +590,31 @@ language with access to the floating-point environment:
 double truncating_quotient(double x, double y)
 {
 	int rounding_mode = fegetround();
+	/* Note: Some "optimizing" compilers will combine this x/y and the
+	 * second x/y in the floating point environment, even though they
+	 * might return different numbers. This will defeat the whole
+	 * purpose of this function.
+	 *
+	 * This specific function has to be compiled without such
+	 * "optimizations."
+	 */
 	double result = x/y;
 
-	/* The TOWARDZERO mode will always return the largest positive flonum
-	 * when two finite numbers are divided and their result would be
-	 * outside of the representable range.
+	/* The TOWARDZERO mode will always return the largest positive
+	 * flonum when two finite numbers are divided and their result
+	 * would be outside of the representable range.
 	 *
 	 * This overflows all results that would overflow in the current
 	 * rounding mode (assumed to be round-to-nearest).
 	 *
-	 * IEEE 754-2019 says that the round-to-nearest modes will overflow if
-	 * the result is greater in magnitude than b^{emax}×(b-½b^{1-p}).
-	 * For binary64, this is 2^1023×(2 - b^-53). Note that the largest
-	 * representable binary64 number is 2^1023×(2 - b^52). Hence if a
-	 * division overflows in RN, it's exact truncated quotient would
-	 * be multiple integers above the largest representable floating
-	 * point number, so it should be infinity.
+	 * IEEE 754-2019 says that the round-to-nearest modes will
+	 * overflow if the result is greater in magnitude than
+	 * b^{emax}×(b-½b^{1-p}). For binary64, this is 2^1023×(2 - b^-53).
+	 * Note that the largest representable binary64 number is
+	 * 2^1023×(2 - b^52). Hence if a division overflows in RN, it's
+	 * exact truncated quotient would be multiple integers above the
+	 * largest representable floating point number, so it should be
+	 * infinity.
 	 *
 	 * So this implementation should cover all cases.
 	 */
