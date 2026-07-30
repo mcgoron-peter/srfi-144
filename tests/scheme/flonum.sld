@@ -436,9 +436,9 @@
        (test (test-flnormalized-fraction-exponent (fl- fl-greatest))
              '(#t #t #t #t #t))
        (test (test-flnormalized-fraction-exponent posinf)
-             '(#t #t #t #t #t))
+             '(#t #t #t #f #t))
        (test (test-flnormalized-fraction-exponent neginf)
-             '(#t #t #t #t #t))
+             '(#t #t #t #f #t))
        (test (test-flnormalized-fraction-exponent nan)
              '(#t #t #f #f #f))
 

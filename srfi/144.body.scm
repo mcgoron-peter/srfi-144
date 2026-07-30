@@ -188,7 +188,7 @@
         ((fl=? x 0.0)    ; unspecified for 0.0
          (values 0.0 0))
         ((flinfinite? x)
-         (values 0.5 (+ 3 (exact (round (fllog2 fl-greatest))))))
+         (values x 0))
         ((flnormalized? x)
          (let* ((result2 (exact (flround (fllog2 x))))
                 (result2 (if (integer? result2)
