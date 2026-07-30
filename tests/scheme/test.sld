@@ -36,6 +36,10 @@
           (scheme write))
 
   (cond-expand
+    (mit (export catch-exns make-approx))
+    (else))
+
+  (cond-expand
    ((library (scheme inexact))
     (import (scheme inexact)))
    ((not (library (scheme inexact)))
