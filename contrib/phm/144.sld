@@ -1,63 +1,80 @@
 (define-library (srfi 144)
-  (import (scheme base) (scheme case-lambda)
+  (import (scheme base) (scheme case-lambda))
+  (import (rename (only (mit legacy runtime)
+                        flo:rounding-mode flo:set-rounding-mode!
+                        flo:= flo:< flo:<= flo:> flo:>=
+                        flo:fast-fma?
+                        flo:+ flo:- flo:* flo:/ flo:+*
+                        flo:error-bound
+                        flo:logb flo:sign-negative?
+                        flo:max flo:min
+                        ;; Renamed imports
+                        flo:largest-positive-normal
+                        flo:smallest-positive-subnormal flo:error-bound
+                        flo:flonum flo:nextafter flo:ldexp
+                        flo:copysign flo:flonum? flo:unordered? flo:zero?
+                        flo:positive? flo:negative? flo:finite?
+                        flo:infinite? flo:nan? flo:normal? flo:subnormal?
+                        flo:+* flo:abs flo:floor flo:ceiling flo:round
+                        flo:truncate flo:exp flo:exp2 flo:expm1
+                        flo:sqrt flo:cbrt flo:hypot flo:expt flo:log
+                        flo:logp1 flo:log2 flo:log10 flo:sin flo:cos
+                        flo:tan flo:asin flo:acos flo:sinh flo:cosh
+                        flo:tanh flo:asinh flo:acosh flo:atanh
+                        flo:gamma flo:jn flo:yn flo:erf flo:erfc)
+                  (flo:largest-positive-normal fl-greatest)
+                  (flo:smallest-positive-subnormal fl-least)
+                  (flo:error-bound fl-epsilon)
+                  (flo:flonum flonum)
+                  (flo:nextafter fladjacent)
+                  (flo:ldexp make-flonum)
+                  (flo:copysign flcopysign)
+                  (flo:flonum? flonum?)
+                  (flo:unordered? flunordered?)
+                  (flo:zero? flzero?)
+                  (flo:positive? flpositive?)
+                  (flo:negative? flnegative?)
+                  (flo:finite? flfinite?)
+                  (flo:infinite? flinfinite?)
+                  (flo:nan? flnan?)
+                  (flo:normal? flnormalized?)
+                  (flo:subnormal? fldenormalized?)
+                  (flo:+* fl+*)
+                  (flo:abs flabs)
+                  (flo:floor flfloor)
+                  (flo:ceiling flceiling)
+                  (flo:round flround)
+                  (flo:truncate fltruncate)
+                  (flo:exp flexp)
+                  (flo:exp2 flexp2)
+                  (flo:expm1 flexp-1)
+                  (flo:sqrt flsqrt)
+                  (flo:cbrt flcbrt)
+                  (flo:hypot flhypot)
+                  (flo:expt flexpt)
+                  (flo:log fllog)
+                  (flo:logp1 fllog+1)
+                  (flo:log2 fllog2)
+                  (flo:log10 fllog10)
+                  (flo:sin flsin)
+                  (flo:cos flcos)
+                  (flo:tan fltan)
+                  (flo:asin flasin)
+                  (flo:acos flacos)
+                  (flo:sinh flsinh)
+                  (flo:cosh flcosh)
+                  (flo:tanh fltanh)
+                  (flo:asinh flasinh)
+                  (flo:acosh flacosh)
+                  (flo:atanh flatanh)
+                  (flo:gamma flgamma)
+                  (flo:jn flfirst-bessel)
+                  (flo:yn flsecond-bessel)
+                  (flo:erf flerf)
+                  (flo:erfc flerfc)))
+
           (only (mit legacy runtime)
-                flo:rounding-mode flo:set-rounding-mode!
-                (rename flo:largest-positive-normal fl-greatest)
-                (rename flo:smallest-positive-subnormal fl-least)
-                (rename flo:error-bound fl-epsilon)
-                (rename flo:flonum flonum)
-                (rename flo:nextafter fladjacent)
-                (rename flo:ldexp make-flonum)
-                (rename flo:copysign flcopysign)
-                (rename flo:flonum? flonum?)
-                (rename flo:unordered? flunordered?)
-                (rename flo:zero? flzero?)
-                (rename flo:positive? flpositive?)
-                (rename flo:negative? flnegative?)
-                flo:= flo:< flo:<= flo:> flo:>=
-                (rename flo:finite? flfinite?)
-                (rename flo:infinite? flinfinite?)
-                (rename flo:nan? flnan?)
-                (rename flo:normal? flnormalized?)
-                (rename flo:subnormal? fldenormalized?)
-                flo:fast-fma?
-                flo:+ flo:- flo:* flo:/ flo:+*
-                (rename flo:+* fl+*)
-                (rename flo:abs flabs)
-                (rename flo:floor flfloor)
-                (rename flo:ceiling flceiling)
-                (rename flo:round flround)
-                (rename flo:truncate fltruncate)
-                (rename flo:exp flexp)
-                (rename flo:exp2 flexp2)
-                (rename flo:expm1 flexp-1)
-                (rename flo:sqrt flsqrt)
-                (rename flo:cbrt flcbrt)
-                (rename flo:hypot flhypot)
-                (rename flo:expt flexpt)
-                (rename flo:log fllog)
-                (rename flo:logp1 fllog+1)
-                (rename flo:log2 fllog2)
-                (rename flo:log10 fllog10)
-                (rename flo:sin flsin)
-                (rename flo:cos flcos)
-                (rename flo:tan fltan)
-                (rename flo:asin flasin)
-                (rename flo:acos flacos)
-                (rename flo:sinh flsinh)
-                (rename flo:cosh flcosh)
-                (rename flo:tanh fltanh)
-                (rename flo:asinh flasinh)
-                (rename flo:acosh flacosh)
-                (rename flo:atanh flatanh)
-                (rename flo:gamma flgamma)
-                (rename flo:jn flfirst-bessel)
-                (rename flo:yn flfirst-bessel)
-                (rename flo:erf flerf)
-                (rename flo:erfc flerfc)
-                flo:error-bound
-                flo:logb flo:sign-negative?
-                flo:max flo:min))
+                ))
   (export fl-greatest fl-least fl-epsilon
           fl-fast-fl+*
           fl-integer-exponent-zero
@@ -65,7 +82,8 @@
   (begin
     (define fl-fast-fl+* (flo:fast-fma?))
     (define fl-integer-exponent-zero
-      (- (- (expt 2 24)) 1))   ;; very small exponent
+      (- (- (expt 2 24)) 1))   ; very small exponent, intended to be
+                               ; a fixnum
     (define fl-integer-exponent-nan
       fl-integer-exponent-zero))
 
@@ -98,7 +116,7 @@
         ;; (after normalization) the fractional part.
         ;;
         ;; Hence this is errorless.
-        (values i (flo:- flo i))))
+        (values i (flo:- fl i))))
     (define (flinteger-exponent fl)
       (cond
         ((flo:nan? fl) fl-integer-exponent-nan)
