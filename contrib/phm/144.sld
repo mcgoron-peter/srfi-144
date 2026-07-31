@@ -3,6 +3,9 @@
           (only (srfi 1) filter-map)
           (only (srfi 143) fx-least fx-greatest))
   (import (only (mit legacy runtime)
+                with-restart
+                prompt-for-evaluated-expression
+                error:wrong-type-argument
                 er-macro-transformer
                 flo:rounding-mode flo:set-rounding-mode!
                 flo:precision
@@ -88,11 +91,27 @@
                   (flo:erfc flerfc)))
 
   (begin
-    (define (assert-flonum! who x)
-      ;; FIXME: This should use a restart so that one can specify
-      ;; a correct value.
-      (unless (flonum? x)
-        (error:wrong-type-argument x "flonum" who))))
+    (define (restarter predicate? error-string type-string)
+      (letrec
+          ((assert
+            (lambda (who x)
+              (if (predicate? x)
+                  x
+                  (call-with-current-continuation
+                   (lambda (escape)
+                     (with-restart
+                      'retry-flonum
+                      error-string
+                      (lambda (x*) (escape (assert who x*)))
+                      (lambda () (prompt-for-evaluated-expression "New value"))
+                      (lambda ()
+                        (if (flonum? x)
+                            x
+                            (error:wrong-type-argument x type-string who))))))))))
+        assert))
+    (define assert-flonum
+      (restarter flonum? "Prompt for a new flonum value."
+                 "flonum")))
 
   (export fl-greatest fl-least fl-epsilon
           fl-fast-fl+*
@@ -137,15 +156,17 @@
                                (cdr desc)))
                  (checks (filter-map (lambda (form)
                                        (if (pair? form)
-                                           `(,(cadr form)
-                                             (,(r 'quote) ,name)
-                                             ,(car form))
+                                           `(,(car form)
+                                             (,(cadr form)
+                                              (,(r 'quote) ,name)
+                                              ,(car form)))
                                            #f))
                                      (cdr desc))))
            `(,(r 'define) (,name . ,formals)
-             ,@checks ,@body)))))
+             (,(r 'let) (,@checks)
+               ,@body))))))
     (define flonum inexact)
-    (define-checked (flinteger-fraction (fl assert-flonum!))
+    (define-checked (flinteger-fraction (fl assert-flonum))
       ;; fl = (1 + m)*2^e
       (let ((i (fltruncate fl)))
         ;; if e < 0, then i = 0, hence the fractional part is just the
@@ -158,19 +179,19 @@
         ;;
         ;; Hence this is errorless.
         (values i (flo:- fl i))))
-    (define-checked (flinteger-exponent (fl assert-flonum!))
+    (define-checked (flinteger-exponent (fl assert-flonum))
       (cond
         ((flnan? fl) fl-integer-exponent-nan)
         ((flzero? fl) fl-integer-exponent-zero)
         ((flinfinite? fl) fx-greatest)
         (else (flo:logb fl))))
-    (define-checked (flexponent (fl assert-flonum!))
+    (define-checked (flexponent (fl assert-flonum))
       (cond
         ((flnan? fl) fl)
         ((flzero? fl) (flonum -inf.0))
         ((flinfinite? fl) fl)
         (else (flonum (flo:logb fl)))))
-    (define-checked (flnormalized-fraction-exponent (fl assert-flonum!))
+    (define-checked (flnormalized-fraction-exponent (fl assert-flonum))
       (cond
         ((flzero? fl) (values fl 0))
         ((flinfinite? fl) (values fl 0)) ; unspecified.
@@ -191,7 +212,7 @@
                 ;; Hence frac ∈ [0.5, 1) and
                 ;; frac*2^R = (1+m)*2^e = fl
            (values frac returned-e)))))
-    (define-checked (flsign-bit (fl assert-flonum!))
+    (define-checked (flsign-bit (fl assert-flonum))
       (if (flo:sign-negative? fl)
           1
           0)))
@@ -210,28 +231,28 @@
   (begin
     (define (nary-predicate who ~?)
       (case-lambda
-        ((x y) (~? x y))
+        ((x y)
+         (~? (assert-flonum who x) (assert-flonum who y)))
         ;; MIT-Scheme doesn't like (x y . rest) for some reason
         ((x y w . rest)
-         (assert-flonum! who x)
-         (let loop ((x x) (y y) (rest (cons w rest)))
-           (assert-flonum! who y)
-           (and (~? x y)
-                (or (null? rest)
-                    (loop y (car rest) (cdr rest))))))))
+         (let loop ((x (assert-flonum who x)) (y y) (rest (cons w rest)))
+           (let ((y (assert-flonum who y)))
+             (and (~? x y)
+                  (or (null? rest)
+                      (loop y (car rest) (cdr rest)))))))))
     (define fl=? (nary-predicate 'fl=? flo:safe=))
     (define fl<? (nary-predicate 'fl<? flo:safe<))
     (define fl>? (nary-predicate 'fl>? flo:safe>))
     (define fl<=? (nary-predicate 'fl<=? flo:safe<=))
     (define fl>=? (nary-predicate 'fl>=? flo:safe>=))
-    (define-checked (flinteger? (fl assert-flonum!))
+    (define-checked (flinteger? (fl assert-flonum))
       (flo:safe= fl (flround fl)))
-    (define (assert-flinteger! who fl)
-      (unless (and (flonum? fl) (flinteger? fl))
-        (error:wrong-type-argument fl "integer flonum" who)))
-    (define-checked (fleven? (x assert-flinteger!))
+    (define assert-flinteger
+      (restarter flinteger? "Prompt for a new integer flonum value."
+                 "integer flonum"))
+    (define-checked (fleven? (x assert-flinteger))
       (flinteger? (flo:/ x 2.0)))
-    (define-checked (flodd? (x assert-flinteger!))
+    (define-checked (flodd? (x assert-flinteger))
       (not (fleven? x))))
 
   (export flmax flmin
@@ -250,20 +271,16 @@
          (define name
            (case-lambda
              (() default)
-             ((x) (assert-flonum! 'name x)
-                  (on-single x))
-             ((x y) (assert-flonum! 'name x)
-                    (assert-flonum! 'name y)
-                    (prop x y))
+             ((x) (on-single (assert-flonum 'name x)))
+             ((x y) (prop (assert-flonum 'name x) (assert-flonum 'name y)))
              ((x y w . rest)
-              (assert-flonum! 'name x)
-              (do ((candidate x (prop candidate y))
-                   (y y (car rest))
+              (do ((candidate (assert-flonum 'name x)
+                              (prop candidate y))
+                   (y (assert-flonum 'name y)
+                      (assert-flonum 'name (car rest)))
                    (rest (cons w rest) (cdr rest)))
                   ((null? rest)
-                   (assert-flonum! 'name y)
-                   (prop candidate y))
-                (assert-flonum! 'name y))))))))
+                   (prop candidate y)))))))))
 
     (define-nary-prop flmax flo:max -inf.0)
     (define-nary-prop flmin flo:min +inf.0)
@@ -271,20 +288,16 @@
     (define fl+
       (case-lambda
         (() 0.0)
-        ((x) (assert-flonum! 'fl+ x)
-             x)
-        ((x y) (assert-flonum! 'fl+ x)
-               (assert-flonum! 'fl+ y)
-               (flo:+ x y))
+        ((x) (assert-flonum 'fl+ x))
+        ((x y) (flo:+ (assert-flonum 'fl+ x)
+                      (assert-flonum 'fl+ y)))
         ((x y w . input)
-         (assert-flonum! 'fl+ x)
          ;; Neumaier summation
          (letrec ((loop
                    (lambda (sum c input)
                      (if (null? input)
                          (flo:+ sum c)
-                         (let ((x (car input)))
-                           (assert-flonum! 'fl+ x)
+                         (let ((x (assert-flonum 'fl+ (car input))))
                            (let ((t (flo:+ sum x)))
                              (if (flinfinite? t)
                                  (for-infinite t (cdr input))
@@ -298,9 +311,13 @@
                    (lambda (sum rest)
                      (if (null? rest)
                          sum
-                         (for-infinite (flo:+ sum (car rest))
+                         (for-infinite (flo:+ sum
+                                              (assert-flonum 'fl+ (car rest)))
                                        (cdr rest))))))
-           (loop x 0.0 (cons y (cons w input)))))))
+           (loop (assert-flonum 'fl+ x)
+                 0.0
+                 (cons (assert-flonum 'fl+ y)
+                       (cons (assert-flonum 'fl+ w) input)))))))
 
     (define-nary-prop fl* flo:* 1.0)
     (define-nary-prop fl- flo:- (error "wrong number of arguments to fl-") flo:negate)
@@ -309,16 +326,16 @@
                       (error "wrong number of arguments to fl/")
                       (lambda (fl) (flo:/ 1.0 fl)))
 
-    (define-checked (flabsdiff (x assert-flonum!) (y assert-flonum!))
+    (define-checked (flabsdiff (x assert-flonum) (y assert-flonum))
       (flabs (flo:- x y)))
-    (define-checked (flposdiff (x assert-flonum!) (y assert-flonum!))
+    (define-checked (flposdiff (x assert-flonum) (y assert-flonum))
       (if (flo:safe< x y)
           +0.0
           (flo:- x y)))
-    (define-checked (flsgn (x assert-flonum!))
+    (define-checked (flsgn (x assert-flonum))
       (flcopysign 1.0 x))
 
-    (define-checked (flnumerator-denominator (x assert-flonum!))
+    (define-checked (flnumerator-denominator (x assert-flonum))
       (cond
         ((flinfinite? x) (values x 1.0))
         ((flnan? x) (values x x))
@@ -341,11 +358,11 @@
             (values (flo:+ fracnum (flo:* i fracdenom))
                     fracdenom)))))
 
-    (define-checked (flnumerator (x assert-flonum!))
+    (define-checked (flnumerator (x assert-flonum))
       (let-values (((n d) (flnumerator-denominator x)))
         n))
 
-    (define-checked (fldenominator (x assert-flonum!))
+    (define-checked (fldenominator (x assert-flonum))
       (let-values (((n d) (flnumerator-denominator x)))
         d))
   )
@@ -354,9 +371,9 @@
           fllog fllog1+ fllog2 fllog10 make-fllog-base)
 
   (begin
-    (define-checked (flsquare (x assert-flonum!))
+    (define-checked (flsquare (x assert-flonum))
       (flo:* x x))
-    (define-checked (make-fllog-base (x assert-flonum!))
+    (define-checked (make-fllog-base (x assert-flonum))
       (if (flo:safe<= x 1.0)
           (error:bad-range-argument x 'make-fllog-base)
           (lambda (y)
@@ -369,16 +386,14 @@
   (begin
     (define flatan
       (case-lambda
-        ((x) (assert-flonum! 'flatan x)
-             (flo:atan x))
-        ((y x) (assert-flonum! 'flatan y)
-               (assert-flonum! 'flatan x)
-               (flo:atan2 y x)))))
+        ((x) (flo:atan (assert-flonum 'flatan x)))
+        ((y x) (flo:atan2 (assert-flonum 'flatan y)
+                          (assert-flonum 'flatan x))))))
 
   (export flquotient flremainder flremquo)
 
   (begin
-    (define-checked (flquotient (x assert-flonum!) (y assert-flonum!))
+    (define-checked (flquotient (x assert-flonum) (y assert-flonum))
       ;; This is rare instance where we want a non-standard rounding mode.
       ;; The division may return a number that was rounded up from a
       ;; non-integer into a integer. We don't want that, because then
@@ -412,18 +427,19 @@
                 (flo:set-rounding-mode! current-rounding-mode)
                 value))))))
   (begin
-    (define check-flonum! assert-flonum!)
+    (define check-flonum!
+      (lambda (who x)
+        (unless (flonum? x)
+          (error:wrong-type-argument x "flonum" who))))
     (define precision-bits flo:precision)
     (define (flop2 who proc)
       (lambda (x y)
-        (assert-flonum! who x)
-        (assert-flonum! who y)
-        (proc x y))))
+        (proc (assert-flonum who x) (assert-flonum who y)))))
   (include "../../srfi/144.remquo.scm")
 
   (export flgamma flloggamma flfirst-bessel flsecond-bessel flerf
           flerfc)
   (begin
-    (define-checked (flloggamma (x assert-flonum!))
+    (define-checked (flloggamma (x assert-flonum))
       (let-values (((m s) (flo:signed-lgamma x)))
         (values m (flonum s))))))
