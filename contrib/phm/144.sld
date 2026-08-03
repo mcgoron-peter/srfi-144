@@ -340,15 +340,31 @@
         ((x) (assert-flonum 'fl* x))
         ((x y) (flo:* (assert-flonum 'fl* x) (assert-flonum 'fl* y)))
         ((x y w . input)
-         (let loop ((p (assert-flonum 'fl* x))
-                    (e 0.0)
-                    (list (cons y (cons w input))))
-           (cond
-             ((null? list) (flo:+ p e))
-             (else
-              (let ((y (assert-flonum 'fl* (car list))))
-                (let-values (((p e-here) (twomult p y)))
-                  (loop p (maybefma e y e-here) (cdr list))))))))))
+         (letrec ((loop
+                   (lambda (p e list)
+                     (cond
+                       ((null? list)
+                        (if (zero? e)       ; (flo:+ -0.0 0.0) => 0.0, so this
+                            p               ; check is required so
+                            (flo:+ p e)))   ; (flo:* -0.0 -0.0 -0.0) => -0.0
+                       (else
+                        (let*-values (((y) (assert-flonum 'fl* (car list)))
+                                      ((p e-here) (twomult p y)))
+                          (if (flfinite? p)
+                              (loop p
+                                    (maybefma e y e-here)
+                                    (cdr list))
+                              (specials p (cdr list))))))))
+                  (specials
+                   (lambda (acc list)
+                     (if (null? list)
+                         acc
+                         (specials (flo:* acc (assert-flonum 'fl*
+                                                             (car list)))
+                                   (cdr list))))))
+           (loop (assert-flonum 'fl* x)
+                 0.0
+                 (cons y (cons w input)))))))
 
     (define-nary-prop fl- flo:- (error "wrong number of arguments to fl-") flo:negate)
     (define-nary-prop fl/ 

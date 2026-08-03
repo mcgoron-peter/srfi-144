@@ -215,6 +215,10 @@
    (define infinities (map flonum (list -inf.0 +inf.0)))
    (define weird (append infinities (list (flonum +nan.0))))
 
+   ;;; FIXME: For esoteric floating-point reasons, the correct
+   ;;; representation of RN(RN(0.3)^3) differs from RN(0.27) by
+   ;;; one ULP. This tests for equality to RN(0.27), and not
+   ;;; RN(RN(0.3)^3).
    (define somereals (append (map flonum
                                   (list (fl- fl-greatest)
                                         -10
