@@ -319,7 +319,37 @@
                  (cons (assert-flonum 'fl+ y)
                        (cons (assert-flonum 'fl+ w) input)))))))
 
-    (define-nary-prop fl* flo:* 1.0)
+    ;;; For fl*, see
+    ;;; Stef Graillat. Accurate Floating Point Product and
+    ;;; Exponentiation. IEEE Transactions on Computers, 2009, 58 (7),
+    ;;; pp.994-1000. ⟨10.1109/TC.2008.215⟩. ⟨hal-00164607⟩
+
+    (define (twomult x y)
+      (let ((p (flo:* x y)))
+        (values p (flo:*+ x y (flo:negate p)))))
+
+    (define maybefma
+      (if fl-fast-fl+*
+          flo:*+
+          (lambda (x y z)
+            (flo:+ (flo:* x y) z))))
+
+    (define fl*
+      (case-lambda
+        (() 1.0)
+        ((x) (assert-flonum 'fl* x))
+        ((x y) (flo:* (assert-flonum 'fl* x) (assert-flonum 'fl* y)))
+        ((x y w . input)
+         (let loop ((p (assert-flonum 'fl* x))
+                    (e 0.0)
+                    (list (cons y (cons w input))))
+           (cond
+             ((null? list) (flo:+ p e))
+             (else
+              (let ((y (assert-flonum 'fl* (car list))))
+                (let-values (((p e-here) (twomult p y)))
+                  (loop p (maybefma e y e-here) (cdr list))))))))))
+
     (define-nary-prop fl- flo:- (error "wrong number of arguments to fl-") flo:negate)
     (define-nary-prop fl/ 
                       flo:/ 
