@@ -168,17 +168,21 @@
     (define flonum inexact)
     (define-checked (flinteger-fraction (fl assert-flonum))
       ;; fl = (1 + m)*2^e
-      (let ((i (fltruncate fl)))
-        ;; if e < 0, then i = 0, hence the fractional part is just the
-        ;; flonum itself.
-        ;;
-        ;; if e >= 0, then truncate will zero out the parts of the
-        ;; mantissa that are below the integer. Then the subtraction will
-        ;; remove the upper parts of the mantissa and the 1, leaving
-        ;; (after normalization) the fractional part.
-        ;;
-        ;; Hence this is errorless.
-        (values i (flo:- fl i))))
+      (cond
+        ((flinfinite? fl) (values fl (flcopysign 0.0 fl)))
+        ((flnan? fl) (values fl fl))
+        (else
+         (let ((i (fltruncate fl)))
+           ;; if e < 0, then i = 0, hence the fractional part is just the
+           ;; flonum itself.
+           ;;
+           ;; if e >= 0, then truncate will zero out the parts of the
+           ;; mantissa that are below the integer. Then the subtraction will
+           ;; remove the upper parts of the mantissa and the 1, leaving
+           ;; (after normalization) the fractional part.
+           ;;
+           ;; Hence this is errorless.
+           (values i (flcopysign (flo:- fl i) fl))))))
     (define-checked (flinteger-exponent (fl assert-flonum))
       (cond
         ((flnan? fl) fl-integer-exponent-nan)
